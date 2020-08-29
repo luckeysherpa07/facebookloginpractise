@@ -1,114 +1,60 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
-
-import React from 'react';
+import React, {Component} from 'react';
+import {View, Text} from 'react-native';
 import {
-  SafeAreaView,
-  StyleSheet,
-  ScrollView,
-  View,
-  Text,
-  StatusBar,
-} from 'react-native';
+  LoginButton,
+  AccessToken,
+  GraphRequest,
+  GraphRequestManager,
+} from 'react-native-fbsdk';
 
-import {
-  Header,
-  LearnMoreLinks,
-  Colors,
-  DebugInstructions,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+export default class App extends Component {
+  state = {userInfo: {}};
 
-const App: () => React$Node = () => {
-  return (
-    <>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaView>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.scrollView}>
-          <Header />
-          {global.HermesInternal == null ? null : (
-            <View style={styles.engine}>
-              <Text style={styles.footer}>Engine: Hermes</Text>
-            </View>
-          )}
-          <View style={styles.body}>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Step One</Text>
-              <Text style={styles.sectionDescription}>
-                Edit <Text style={styles.highlight}>App.js</Text> to change this
-                screen and then come back to see your edits.
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>See Your Changes</Text>
-              <Text style={styles.sectionDescription}>
-                <ReloadInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Debug</Text>
-              <Text style={styles.sectionDescription}>
-                <DebugInstructions />
-              </Text>
-            </View>
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Learn More</Text>
-              <Text style={styles.sectionDescription}>
-                Read the docs to discover what to do next:
-              </Text>
-            </View>
-            <LearnMoreLinks />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </>
-  );
-};
+  getInfoFromToken = token => {
+    const PROFILE_REQUEST_PARAMS = {
+      fields: {
+        string: 'id, name,  first_name, last_name',
+      },
+    };
+    const profileRequest = new GraphRequest(
+      '/me',
+      {token, parameters: PROFILE_REQUEST_PARAMS},
+      (error, result) => {
+        if (error) {
+          console.log('login info has error: ' + error);
+        } else {
+          this.setState({userInfo: result});
+          console.log('result:', result);
+        }
+      },
+    );
+    new GraphRequestManager().addRequest(profileRequest).start();
+  };
 
-const styles = StyleSheet.create({
-  scrollView: {
-    backgroundColor: Colors.lighter,
-  },
-  engine: {
-    position: 'absolute',
-    right: 0,
-  },
-  body: {
-    backgroundColor: Colors.white,
-  },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.black,
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-    color: Colors.dark,
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-  footer: {
-    color: Colors.dark,
-    fontSize: 12,
-    fontWeight: '600',
-    padding: 4,
-    paddingRight: 12,
-    textAlign: 'right',
-  },
-});
-
-export default App;
+  render() {
+    return (
+      <View style={{flex: 1, margin: 50}}>
+        <LoginButton
+          onLoginFinished={(error, result) => {
+            if (error) {
+              console.log('login has error: ' + result.error);
+            } else if (result.isCancelled) {
+              console.log('login is cancelled.');
+            } else {
+              AccessToken.getCurrentAccessToken().then(data => {
+                const accessToken = data.accessToken.toString();
+                this.getInfoFromToken(accessToken);
+              });
+            }
+          }}
+          onLogoutFinished={() => this.setState({userInfo: {}})}
+        />
+        {this.state.userInfo.name && (
+          <Text style={{fontSize: 16, marginVertical: 16}}>
+            Logged in As {this.state.userInfo.name}
+          </Text>
+        )}
+      </View>
+    );
+  }
+}
